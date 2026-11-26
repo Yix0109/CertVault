@@ -7,6 +7,15 @@
 | 桌面版 | `CertVault.exe`（C# + WebView2 壳） | 一个人一台电脑，数据放在本地文件夹或网盘同步目录 |
 | 服务器版 | `docker compose up -d`，浏览器访问 `http://NAS-IP:8090` | 多人共用一份台账，带账号、角色、审批与操作日志 |
 
+## 下载
+
+不想自己构建的话，直接取 [Releases](https://github.com/Yix0109/CertVault/releases/tag/v1.0) 里的两个包：
+
+- `CertVault-Desktop-v1.6.zip` —— 桌面版，解压后双击 `CertVault.exe` 即用（Win10/11，含 WebView2 运行时依赖说明）
+- `CertVault-Server-v1.0.zip` —— 服务器版，解压后读 `开始部署.txt`，按 `docs/部署-NAS.md` 在 NAS 上 `docker compose up -d`
+
+GitHub 会把包名里的中文替换成 `-`，所以发行包用英文名；解压后目录仍是 `CertVault-桌面版\` / `CertVault-数据\` / `CertVault-服务器版\`。
+
 ## 截图
 
 台账主界面（账户列已打码，页面内为合成演示数据）：
