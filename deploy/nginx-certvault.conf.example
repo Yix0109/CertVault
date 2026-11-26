@@ -1,0 +1,52 @@
+# CertVault 反向代理 + HTTPS 示例（nginx）
+# 用途：给 http://127.0.0.1:8090 套一层 TLS，浏览器和桌面端统一用 https://cv.example.com/?server=1
+# 用法：存成 /etc/nginx/conf.d/certvault.conf（或 fnOS 反向代理里的「自定义配置」），
+#       把 server_name 和证书路径改成自己的，然后 nginx -t && nginx -s reload。
+#
+# 两个必须知道的约束：
+#   1) client_max_body_size 必须 ≥ 80m —— 服务端 MAX_UPLOAD_BYTES=80MB（整库导入/上传大图）。
+#      nginx 默认只有 1m，不改会在导入备份或传大图时报 413 Request Entity Too Large。
+#   2) 路径里含 # 号时，nginx 配置中的值必须整体加双引号（# 在配置里是注释起始符）。
+#      更省事的做法是把证书放到不含 # 的目录，例如 /etc/ssl/certvault/，下面注释给了写法。
+#
+# CertVault 不需要 WebSocket；请求体最大 80MB，超时给 120s 足够。
+
+server {
+    listen 80;
+    server_name cv.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;                          # nginx ≥ 1.25.1 写法；老版本改成 listen 443 ssl http2;
+    server_name cv.example.com;
+
+    # 证书也可以放 /etc/ssl/certvault/（不含 # 号，不用加引号）
+    ssl_certificate     "/vol2/1000/8#Docker/CertVault/certs/fullchain.pem";
+    ssl_certificate_key "/vol2/1000/8#Docker/CertVault/certs/privkey.pem";
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    client_max_body_size 80m;          # 见文件头约束 1，必须 ≥ 80m
+    client_body_timeout  120s;
+
+    # CertVault 自己不带这些安全头，反代顺手加上
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy same-origin always;
+
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        # proxy_request_buffering off;   # 可选：大文件直传不先落盘（看 NAS 内存）
+    }
+}

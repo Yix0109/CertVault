@@ -1,0 +1,10 @@
+{
+  "name": "certvault",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "CertVault 便携版 CA 台账",
+  "scripts": {
+    "test": "node --test tests/core.test.mjs"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "certvault-server",
+  "private": true,
+  "type": "commonjs",
+  "description": "CertVault 服务器版：零依赖 Node HTTP 服务（CommonJS，避免受仓库根 package.json 的 type=module 影响）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

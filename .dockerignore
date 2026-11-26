@@ -1,0 +1,30 @@
+# 构建上下文 = 仓库根目录（deploy/docker-compose.yml 里 context: ..）
+# 目的：① 别把真实台账 / 口令 / 截图塞进构建上下文（既慢又危险）② 镜像只含运行需要的文件。
+# 下面列的是排除项；Dockerfile 只用 COPY 拷 server/ 与 app/，其余目录本来也进不了镜像，
+# 但排除后能显著减小上传到 Docker daemon 的上下文体积。
+
+# 私有数据：桌面版真实台账（含口令）、迁移产物、容器数据目录
+数据/
+deploy/data/
+
+# 开发/构建/文档目录，运行时用不到
+build/
+dist/
+tests/
+scripts/
+prototype/
+samples/
+docs/
+.agent-teams/
+.git/
+.gitignore
+.dockerignore
+
+# app/ 里的截图和说明只在文档里用，不需要进镜像
+app/*.png
+app/*.md
+
+# 其它杂物
+*.xlsx
+smoke-out.txt
+启动 CertVault.bat

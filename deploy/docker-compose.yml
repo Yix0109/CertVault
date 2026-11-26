@@ -1,0 +1,76 @@
+# CertVault · 飞牛 fnOS（或任意 Docker 主机）Compose 部署
+#
+# 本文件按本机飞牛 NAS 的实际目录写死了绝对路径：
+#   代码 srv  /vol2/1000/8#Docker/CertVault/srv    ← server/ app/ deploy/ .dockerignore
+#   数据 data /vol2/1000/8#Docker/CertVault/data   ← 挂到容器 /data（桌面版「数据\」的内容放这里）
+#
+# 最短路径（完整步骤、反代/HTTPS、Tailscale、备份、升级回退、迁移数据见 docs/部署-NAS.md）：
+#   1) 代码放进 .../CertVault/srv；建 .../CertVault/data 并 chown 1000:1000
+#   2) cp 本目录的 certvault.env.example 为 certvault.env，改掉 CV_PASS，chmod 600
+#   3) docker compose -f "/vol2/1000/8#Docker/CertVault/srv/deploy/docker-compose.yml" up -d --build
+#   4) 浏览器打开 http://<NAS-IP>:8090/?server=1
+#
+# ⚠️ 路径里含 # 号：YAML 中凡含 # 的值一律用双引号整体包住（# 后跟空格会被当成注释，
+#    不加引号会把 /vol2/1000/8#Docker/... 截断成 /vol2/1000/8）；shell 命令里同样要整体加引号。
+#
+# fnOS 图形界面等价操作：Docker → Compose → 新增项目 → 来源选「创建 docker-compose.yml」，
+# 把本文件内容原样粘进去、勾选「立即启动」。因为这里全是绝对路径，粘到 GUI 也不会解析错。
+
+services:
+  certvault:
+    build:
+      # 构建上下文 = srv 目录；Dockerfile 里的 COPY server/... app/... 都相对它。
+      context: "/vol2/1000/8#Docker/CertVault/srv"
+      dockerfile: "deploy/Dockerfile"
+    image: certvault-nas:1.0.0
+    container_name: certvault
+    restart: unless-stopped
+
+    # 明文口令只放 certvault.env，别写进 compose，也别提交到代码库。
+    env_file:
+      - "/vol2/1000/8#Docker/CertVault/srv/deploy/certvault.env"
+
+    # 容器内固定值（契约 §1）：数据根 /data、监听 8080。
+    # 不要把 CV_PORT 改成 8090 —— 对外端口由 ports 映射；改容器端口会让健康检查指向端口。
+    environment:
+      CV_DATA: "/data"
+      CV_PORT: "8080"
+      CV_TZ: "Asia/Shanghai"
+      TZ: "Asia/Shanghai"
+
+    ports:
+      # 宿主机 8090 → 容器 8080。8090 被占用时只改左边（例如 "18090:8080"）。
+      - "8090:8080"
+
+    volumes:
+      # 数据根。桌面版「数据\」下的 data/ images/ backup/ 直接拷进这个宿主机目录。
+      # 用绝对路径，替换/升级 srv 代码时绝不会误删数据。
+      - "/vol2/1000/8#Docker/CertVault/data:/data"
+
+    # 以 UID/GID 1000:1000 运行（node:20-alpine 内置的 node 用户就是 1000:1000）。
+    # NAS 登录用户不是 1000 时：SSH 执行 id 查自己的 uid:gid，改这里，并 chown 数据目录。
+    user: "1000:1000"
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(function(r){process.exit(r.ok?0:1)}).catch(function(){process.exit(1)})"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+    # 约束日志占用，避免把 NAS 系统盘写满。
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    security_opt:
+      - "no-new-privileges:true"
+
+# 换机器/换目录：只改上面三处带引号的绝对路径（context、env_file、volumes），再加 ports。
+# 若只在本机用 CLI、且坚持相对路径，可以改成：
+#   context: ".."
+#   env_file: ["./certvault.env"]
+#   volumes: ["../data:/data"]
+# 但**不要**把相对路径粘进 fnOS 图形界面的 Compose 项目 —— GUI 会把它解析到自己的项目目录下。

@@ -1,0 +1,4 @@
+﻿平台名称,网址,账户,密码,CA口令,截止有效期,提醒天数,备注
+测试平台A,https://a.example.com/,userA,passA,123456,2026-12-31,60,导入测试
+测试平台B,https://b.example.com/,userB,passB,,2026/6/1,30,日期用斜杠
+,https://c.example.com/,userC,,,2026-01-01,60,缺平台名称应报错
